@@ -1,0 +1,14 @@
+API key
+c6999af9-7d6c-48d3-b727-d424e32a3a2a
+API password
+38ce766f-fd9f-49e6-88be-d115c249bd14
+
+C:\Users\tusrana\Desktop\side projects\BulkIPRepCheck\IP List.xlsx
+C:\Users\tusrana\Desktop\side projects\BulkIPRepCheck\test.xlsx
+
+curl -X GET --header 'Accept: application/json' --header 'Authorization: Basic YmY1YTdlMmEtNzI3NS00ZDY5LTk4YzQtYWJmMzdlNjc5MjcwOjk4NzBkNDMzLWIxOGEtNDI0NS04ZGE0LWQ4ZDM3ZmJiZDQ3Yw==' 'https://api.xforce.ibmcloud.com/ipr/history/103.208.220.122'
+
+dependencies: pip install
+progress
+pandas
+openpyxl

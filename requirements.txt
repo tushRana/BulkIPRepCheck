@@ -1,0 +1,5 @@
+pandas
+progress
+openpyxl
+requests
+xlrd
