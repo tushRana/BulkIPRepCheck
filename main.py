@@ -33,6 +33,7 @@ def banner():
     print(" | |_) | |_| | |   < | ||  __/|  _ <  __/ |_) | |___| | | |  __/ (__|   < ")
     print(" |____/ \__,_|_|_|\_\___|_|   |_| \_\___| .__/ \____|_| |_|\___|\___|_|\_\ ")
     print("                                        |_|                               ")
+    print(B + "                                                         By - @oldsoul     " + W)
 
 ################PARSE ARGUMENTS###################
 def parser_error(errmsg):
@@ -43,14 +44,16 @@ def parser_error(errmsg):
 
 def parse_args():
     # parse the arguments
-    parser = argparse.ArgumentParser(epilog='\tExample: \r\npython ' + sys.argv[0] + " -t /path/to/file")
+    parser = argparse.ArgumentParser(prog='BulkIPRepCheck', formatter_class=argparse.RawDescriptionHelpFormatter, epilog='Example: \n python ' + sys.argv[0] + ' -f /path/to/file \n python ' + sys.argv[0] + '-f /path/to/file -s xforce,alienvault -o outfile.xlsx')
     parser.error = parser_error
     parser._optionals.title = "OPTIONS"
-    parser.add_argument('-f', '--file', help="Input file to parse IPs from", required=True)
-    parser.add_argument('-v', '--verbose', help='Enable Verbosity and display results in realtime', nargs='?', default=False)
+    parser.add_argument('-f', '--file', help="Input file containing IPs", required=False)
+    #parser.add_argument('-v', '--verbose', help='Enable Verbosity and display results in realtime', action="store_true")
     parser.add_argument('-t', '--threads', help='Number of threads to use for subbrute bruteforce', type=int, default=5)
     parser.add_argument('-s', '--sources', help='Specify a comma-separated list of sources to query')
+    parser.add_argument('-sL', '--list_sources', help='List all available sources', action="store_true")
     parser.add_argument('-o', '--output', help='Save the results to text file')
+    parser.add_argument('--version', action='version', version='%(prog)s v1.1')
     return parser.parse_args()
 
 ################IP REGEX CHECK###################
@@ -83,24 +86,30 @@ def read_keys():
         return credentials
 
 ##################READ API KEYS##################
-def read_file(file_path):
-    if os.path.exists(file_path):
+def read_input(file_path):
+    if file_path and os.path.exists(file_path):
         print ("[*] Parsing Source IPs")
-        source_IPs = pd.read_excel (file_path)
-        return source_IPs
+        count = 0
+        IP_list = []
+        if file_path.endswith('.xlsx'):
+            IP_data = pd.read_excel (file_path)
+            for j in range(len(IP_data.columns)):
+                for i in range(len(IP_data.index)):
+                    temp = str(IP_data.loc[i][j])
+                    if (is_ipv4(temp)):
+                        count=count+1
+                        IP_list.append(temp)
+        elif file_path.endswith('.txt'):
+            file = open(file_path, 'r')
+            IP_list = file.readlines()
+            count = len(IP_list)
+        print(Y + " [+] Total IPs:" + W, count)
+        return IP_list
     else:
-        sys.exit(R + "[!] Source File not found" + W)
+        sys.exit(R + "[!] Source File not found." + W)
 
 ##################CREATE OUTPUT FILE##################
-def create_file(IP_data):
-    count = 0
-    IP_list = []
-    for j in range(len(IP_data.columns)):
-        for i in range(len(IP_data.index)):
-            temp = str(IP_data.loc[i][j])
-            if (is_ipv4(temp)):
-                count=count+1
-                IP_list.append(temp)
+def create_output_file(IP_list, output):
     workbook = openpyxl.Workbook()
     sheet = workbook.active
     sheet.title = "Reputations"
@@ -119,11 +128,10 @@ def create_file(IP_data):
         cell_obj.value = IP
         row = row + 1
 
-    workbook.save("IP_Reputations.xlsx")
-    return IP_list
+    workbook.save(output + ".xlsx")
 
 #################IBM XFORCE API##################
-def fetch_xforce(IP_list):
+def fetch_xforce(IP_list, output):
     print(G + "[*] Querying IBM XFORCE" + W)
     try:
         f = open("api_keys.txt", "r")
@@ -143,7 +151,7 @@ def fetch_xforce(IP_list):
         creds = [username,password]
     
     BASE_URL = "https://api.xforce.ibmcloud.com/ipr/history/"
-    wb_obj = openpyxl.load_workbook("IP_Reputations.xlsx")
+    wb_obj = openpyxl.load_workbook(output + ".xlsx")
     sheet_obj = wb_obj.active
     cell_obj = sheet_obj.cell(row = 1, column = 2)
     cell_obj.value = "IBM XFORCE"
@@ -204,13 +212,13 @@ def fetch_xforce(IP_list):
                 cell_obj = sheet_obj.cell(row = row, column = col+2)
                 cell_obj.value = str(seen_in)
             row = row+1
-    wb_obj.save("IP_Reputations.xlsx")
+    wb_obj.save(output + ".xlsx")
 
 #####################ABUSE.CH####################
-def fetch_abusech(IP_list):
+def fetch_abusech(IP_list, output):
     print(G + "[*] Querying ABUSE.CH" + W)
     botnet_url = "https://feodotracker.abuse.ch/downloads/ipblocklist.csv"
-    wb_obj = openpyxl.load_workbook("IP_Reputations.xlsx")
+    wb_obj = openpyxl.load_workbook(output + ".xlsx")
     sheet_obj = wb_obj.active
     cell_obj = sheet_obj.cell(row = 1, column = 5)
     cell_obj.value = "abuse.ch"
@@ -259,13 +267,13 @@ def fetch_abusech(IP_list):
             cell_obj.value = "Not-Malicious"
         row = row + 1
     
-    wb_obj.save("IP_Reputations.xlsx")
+    wb_obj.save(output + ".xlsx")
 
 ##############CISCO TALOS########################
-def fetch_talos(IP_list):
+def fetch_talos(IP_list, output):
     print(G + "[*] Querying CISCO Talos" + W)
     blacklist_url = "https://talosintelligence.com/documents/ip-blacklist"
-    wb_obj = openpyxl.load_workbook("IP_Reputations.xlsx")
+    wb_obj = openpyxl.load_workbook(output + ".xlsx")
     sheet_obj = wb_obj.active
     cell_obj = sheet_obj.cell(row = 1, column = 7)
     cell_obj.value = "CISCO Talos"
@@ -297,13 +305,13 @@ def fetch_talos(IP_list):
             cell_obj.value = "Not-Malicious"
         row = row + 1
     
-    wb_obj.save("IP_Reputations.xlsx")
+    wb_obj.save(output + ".xlsx")
     
 #################ALIENVAULT######################
-def fetch_alienvault(IP_list):
+def fetch_alienvault(IP_list, output):
     print(G + "[*] Querying Alienvault" + W)
     url = "https://reputation.alienvault.com/reputation.generic"
-    wb_obj = openpyxl.load_workbook("IP_Reputations.xlsx")
+    wb_obj = openpyxl.load_workbook(output + ".xlsx")
     sheet_obj = wb_obj.active
     cell_obj = sheet_obj.cell(row = 1, column = 8)
     cell_obj.value = "Alienvault"
@@ -346,30 +354,52 @@ def fetch_alienvault(IP_list):
             cell_obj.value = "Not-Malicious"
         row = row + 1
     
-    wb_obj.save("IP_Reputations.xlsx")
+    wb_obj.save(output + ".xlsx")
     
+#################EXECUTE SOURCES######################
+def run_sources(sources, IP_list, output):
+    if sources is None:
+        fetch_xforce(IP_list, output)
+        fetch_abusech(IP_list, output)
+        fetch_talos(IP_list, output)
+        fetch_alienvault(IP_list, output)
+    else:
+        sources = sources.split(',')
+        for source in sources:
+            if source.lower() == 'xforce':
+                fetch_xforce(IP_list, output)
+            if source.lower() == 'abusech':
+                fetch_abusech(IP_list, output)
+            if source.lower() == 'talos':
+                fetch_talos(IP_list, output)
+            if source.lower() == 'alienvault':
+                fetch_alienvault(IP_list, output)
+
 ####################MAIN#########################
 def main():
     #Parse Arguments
     args = parse_args()
     file = args.file
-    verbose = args.verbose
+    #verbose = args.verbose
     threads = args.threads
     sources = args.sources
+    list_sources = args.list_sources
     output = args.output
-    if verbose or verbose is None:
-        verbose = True
+    if list_sources:
+        print("Supported Sources: xforce,abusech,talos,alienvault")
+        exit()
+    if output:
+        output = output.split('.')
+
     #Display Banner
     banner()
-    #read Source File
-    IP_data = read_file(file)
+    #Read Input File
+    IP_list = read_input(file)
     #Create Output File
-    IP_list = create_file(IP_data)
+    create_output_file(IP_list, output[0])
+
     #Running tests
-    fetch_xforce(IP_list)
-    fetch_abusech(IP_list)
-    fetch_talos(IP_list)
-    fetch_alienvault(IP_list)
+    run_sources(sources, IP_list, output[0])
 
 if __name__ == "__main__":
     main()
