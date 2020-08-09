@@ -10,6 +10,7 @@ import argparse
 import pandas as pd
 import ipaddress
 import requests
+import urllib3
 from requests.auth import HTTPBasicAuth 
 import re
 from pathlib import Path
@@ -82,18 +83,72 @@ def read_keys():
         return credentials
 
 ##################READ API KEYS##################
-#def read_file(string):
+def read_file(file_path):
+    if os.path.exists(file_path):
+        print ("[*] Parsing Source IPs")
+        source_IPs = pd.read_excel (file_path)
+        return source_IPs
+    else:
+        sys.exit(R + "[!] Source File not found" + W)
 
+##################CREATE OUTPUT FILE##################
+def create_file(IP_data):
+    count = 0
+    IP_list = []
+    for j in range(len(IP_data.columns)):
+        for i in range(len(IP_data.index)):
+            temp = str(IP_data.loc[i][j])
+            if (is_ipv4(temp)):
+                count=count+1
+                IP_list.append(temp)
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Reputations"
+    highlight = NamedStyle(name="highlight")
+    highlight.font = Font(name='Verdana', size=9, bold=True, italic=False, vertAlign=None, underline='none', strike=False, color='FFFFFF')
+    highlight.fill = PatternFill(fill_type="solid", bgColor='FF000000')
+    workbook.add_named_style(highlight)
+    cell_obj = sheet.cell(row = 1, column = 1)
+    cell_obj.value = "IP"
+    sheet.merge_cells('A1:A2')
+    sheet['A1'].style = highlight
+    row = 3
+    col = 1
+    for IP in IP_list:
+        cell_obj = sheet.cell(row = row, column = col)
+        cell_obj.value = IP
+        row = row + 1
+
+    workbook.save("IP_Reputations.xlsx")
+    return IP_list
 
 #################IBM XFORCE API##################
-def fetch_xforce():
+def fetch_xforce(IP_list):
+    print(G + "[*] Querying IBM XFORCE" + W)
+    try:
+        f = open("api_keys.txt", "r")
+    except:
+        print (Y + " [+] API Keys file not found. Moving on..." + W)
+        return
+    else:
+        username_line = f.readline()
+        username = username_line.split('=', 1)
+        username = re.sub(r"[\n\t\s]*", "", username[1])
+        password_line = f.readline()
+        password = password_line.split('=', 1)
+        password = re.sub(r"[\n\t\s]*", "", password[1])
+        if not username or not password:
+            print(Y + " [+] IBM XFORCE API not configured. Moving on..." + W)
+            return
+        creds = [username,password]
+    
     BASE_URL = "https://api.xforce.ibmcloud.com/ipr/history/"
     wb_obj = openpyxl.load_workbook("IP_Reputations.xlsx")
     sheet_obj = wb_obj.active
     cell_obj = sheet_obj.cell(row = 1, column = 2)
     cell_obj.value = "IBM XFORCE"
     sheet_obj.merge_cells('B1:D1')
-    sheet_obj['B1'].style = highlight
+    sheet_obj['B1'].style = 'highlight'
     cell_obj = sheet_obj.cell(row = 2, column = 2)
     cell_obj.value = "Status"
     cell_obj = sheet_obj.cell(row = 2, column = 3)
@@ -108,7 +163,8 @@ def fetch_xforce():
         try:
             response = requests.get(url = url , auth = HTTPBasicAuth(creds[0], creds[1]))
         except:
-            sys.exit("Cannot connect to the server")
+            print(R + " [!] Cannot connect to the API. Moving on..." + W)
+            return
         else:
             if response.status_code == 403:
                 issue = "Invalid API keys"
@@ -151,14 +207,15 @@ def fetch_xforce():
     wb_obj.save("IP_Reputations.xlsx")
 
 #####################ABUSE.CH####################
-def fetch_abusech():
+def fetch_abusech(IP_list):
+    print(G + "[*] Querying ABUSE.CH" + W)
     botnet_url = "https://feodotracker.abuse.ch/downloads/ipblocklist.csv"
     wb_obj = openpyxl.load_workbook("IP_Reputations.xlsx")
     sheet_obj = wb_obj.active
     cell_obj = sheet_obj.cell(row = 1, column = 5)
     cell_obj.value = "abuse.ch"
     sheet_obj.merge_cells('E1:F1')
-    sheet_obj['E1'].style = highlight
+    sheet_obj['E1'].style = 'highlight'
     cell_obj = sheet_obj.cell(row = 2, column = 5)
     cell_obj.value = "Status"
     cell_obj = sheet_obj.cell(row = 2, column = 6)
@@ -169,7 +226,8 @@ def fetch_abusech():
     try:
         response = requests.get(url = botnet_url)
     except:
-            sys.exit("Cannot connect to the server")
+        print(R + " [!] Cannot connect to the server. Moving on..." + W)
+        return
     res_data = response.text
     res_data = res_data.split("\n")
     res_data = list(filter(None, res_data))
@@ -204,22 +262,24 @@ def fetch_abusech():
     wb_obj.save("IP_Reputations.xlsx")
 
 ##############CISCO TALOS########################
-def fetch_talos():
+def fetch_talos(IP_list):
+    print(G + "[*] Querying CISCO Talos" + W)
     blacklist_url = "https://talosintelligence.com/documents/ip-blacklist"
     wb_obj = openpyxl.load_workbook("IP_Reputations.xlsx")
     sheet_obj = wb_obj.active
     cell_obj = sheet_obj.cell(row = 1, column = 7)
     cell_obj.value = "CISCO Talos"
-    sheet_obj['G1'].style = highlight
+    sheet_obj['G1'].style = 'highlight'
     cell_obj = sheet_obj.cell(row = 2, column = 7)
     cell_obj.value = "Status"
     row = 3
     col = 7
-    
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     try:
         response = requests.get(url = blacklist_url, verify=False)
     except:
-            sys.exit("Cannot connect to the server")
+        print(R + " [!] Cannot connect to the server. Moving on..." + W)
+        return
     res_data = response.text
     res_data = res_data.split("\n")
     res_data = list(filter(None, res_data))
@@ -240,13 +300,14 @@ def fetch_talos():
     wb_obj.save("IP_Reputations.xlsx")
     
 #################ALIENVAULT######################
-def fetch_alienvault():
+def fetch_alienvault(IP_list):
+    print(G + "[*] Querying Alienvault" + W)
     url = "https://reputation.alienvault.com/reputation.generic"
     wb_obj = openpyxl.load_workbook("IP_Reputations.xlsx")
     sheet_obj = wb_obj.active
     cell_obj = sheet_obj.cell(row = 1, column = 8)
     cell_obj.value = "Alienvault"
-    sheet_obj['H1'].style = highlight
+    sheet_obj['H1'].style = 'highlight'
     cell_obj = sheet_obj.cell(row = 2, column = 8)
     cell_obj.value = "Status"
     row = 3
@@ -255,7 +316,8 @@ def fetch_alienvault():
     try:
         response = requests.get(url = url)
     except:
-            sys.exit("Cannot connect to the server")
+        print(R + " [!] Cannot connect to the server. Moving on..." + W)
+        return
     res_data = response.text
     res_data = res_data.split("\n")
     res_data = list(filter(None, res_data))
@@ -288,6 +350,7 @@ def fetch_alienvault():
     
 ####################MAIN#########################
 def main():
+    #Parse Arguments
     args = parse_args()
     file = args.file
     verbose = args.verbose
@@ -296,57 +359,17 @@ def main():
     output = args.output
     if verbose or verbose is None:
         verbose = True
+    #Display Banner
     banner()
-
-    #read_file(file)
-
-    file_path = file
-    if os.path.exists(file_path):
-        print ("Parsing IPs")
-    else:
-        sys.exit("File not found")
-    
-    IP_data = pd.read_excel (file_path)
-
-    count = 0
-    IP_list = []
-    for j in range(len(IP_data.columns)):
-        for i in range(len(IP_data.index)):
-            temp = str(IP_data.loc[i][j])
-            if (is_ipv4(temp)):
-                count=count+1
-                IP_list.append(temp)
-
-    workbook = openpyxl.Workbook()
-    sheet = workbook.active
-    sheet.title = "Reputations"
-
-    highlight = NamedStyle(name="highlight")
-    highlight.font = Font(name='Verdana', size=9, bold=True, italic=False, vertAlign=None, underline='none', strike=False, color='FFFFFF')
-    highlight.fill = PatternFill(fill_type="solid", bgColor='FF000000')
-    workbook.add_named_style(highlight)
-
-    cell_obj = sheet.cell(row = 1, column = 1)
-    cell_obj.value = "IP"
-    sheet.merge_cells('A1:A2')
-    sheet['A1'].style = highlight
-    row = 3
-    col = 1
-    for IP in IP_list:
-        cell_obj = sheet.cell(row = row, column = col)
-        cell_obj.value = IP
-        row = row + 1
-
-    workbook.save("IP_Reputations.xlsx")
-
-    creds = read_keys()
-    if creds == "false":
-        print ("IBM XFORCE API not configured")
-
-    fetch_xforce()
-    fetch_abusech()
-    fetch_talos()
-    fetch_alienvault()
+    #read Source File
+    IP_data = read_file(file)
+    #Create Output File
+    IP_list = create_file(IP_data)
+    #Running tests
+    fetch_xforce(IP_list)
+    fetch_abusech(IP_list)
+    fetch_talos(IP_list)
+    fetch_alienvault(IP_list)
 
 if __name__ == "__main__":
     main()
