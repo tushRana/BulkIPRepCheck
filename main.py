@@ -14,7 +14,6 @@ import urllib3
 from requests.auth import HTTPBasicAuth 
 import re
 from pathlib import Path
-from progress.spinner import Spinner
 import openpyxl
 from openpyxl.styles import NamedStyle, Font, PatternFill
 
@@ -390,7 +389,9 @@ def main():
         exit()
     if output:
         output = output.split('.')
-
+    elif not output:
+        output = "IP_Reputations.xlsx"
+        
     #Display Banner
     banner()
     #Read Input File
