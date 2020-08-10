@@ -24,7 +24,8 @@ python3 -m venv env
 source env/bin/activate
 ```
 3. Install dependencies:
-```pip install -r requirements.txt
+```
+pip install -r requirements.txt
 ```
 
 ### Dependencies:
@@ -43,15 +44,23 @@ Short Form    | Long Form     | Description
 
 ### Examples
 * To query all supported sources against IPs in an excel file:
-```python main.py -f filename.xlsx -o output.xlsx```
+```
+python main.py -f filename.xlsx -o output.xlsx
+```
 * To query specific sources against IPs in an excel file:
-```python main.py -f filename.xlsx -s xforce,alienvault -o output.xlsx```
+```
+python main.py -f filename.xlsx -s xforce,alienvault -o output.xlsx
+```
 * To query all supported sources against IPs in a text file file:
-```python main.py -f filename.txt -o output.xlsx```
+```
+python main.py -f filename.txt -o output.xlsx
+```
 * To list all supported sources:
-```python main.py -sL```
+```
+python main.py -sL
+```
 
-####To-do list:
+#### To-do list:
 * Adding support for more sources.
 * Using multi-threading for faster execution.
 * Adding verbose support.
