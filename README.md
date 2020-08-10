@@ -10,7 +10,7 @@ The tool has support for the following IP Reputation databases:
 There are many tools which query IP Reputations individually but I could not find any tool to do this in Bulk for many IPs. So, created this tool to query multiple databases for multiple IPs recursively and quickly.
 
 ## Screenshots
-![Example screenshot](./img/screenshot.png)
+![Example screenshot](./img/screenshot.PNG)
 
 ## Installation
 1. Clone the repository:
