@@ -42,6 +42,13 @@ Short Form    | Long Form     | Description
 -o            | --output      | Save the results to excel file
 -h            | --help        | show the help message and exit
 
+### Setting up API Keys
+User's API keys are needed to query IBM XFORCE databases. Steps given below:
+* Go to XFORCE website and create an IBMid - https://exchange.xforce.ibmcloud.com/
+* Generate a new API key by going to account settings - https://exchange.xforce.ibmcloud.com/settings/api
+* Copy and paste the generated API key and API password in the `api_keys.txt` file and save the file. 
+![Example screenshot](./img/screenshot1.PNG)
+
 ### Examples
 * To query all supported sources against IPs in an excel file:
 ```
