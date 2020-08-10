@@ -1,2 +1,2 @@
-xforceAPI_Username=55df4abf-57fd-4bdf-8183-f2a3eaa3db7c
-xforceAPI_Password=7477fb4b-2a94-4a1a-870b-d3d471b6f46c
+xforceAPI_Username=
+xforceAPI_Password=
